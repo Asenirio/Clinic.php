@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigitalRX.io - Clinic Dashboard (Static Clone)</title>
+    <!-- Tailwind CSS (via CDN for portability) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome (via CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Chart.js (via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --brand-primary: #3b82f6;
+            --brand-secondary: #6366f1;
+            --brand-bg: #f8fafc;
+        }
+
+        [data-theme="midnight"] {
+            --brand-primary: #a855f7;
+            --brand-secondary: #ec4899;
+            --brand-bg: #0f172a;
+        }
+
+        [data-theme="mint"] {
+            --brand-primary: #10b981;
+            --brand-secondary: #06b6d4;
+            --brand-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--brand-bg);
+            transition: background-color 0.3s ease;
+        }
+
+        .text-primary { color: var(--brand-primary); }
+        .bg-primary { background-color: var(--brand-primary); }
+        .border-primary { border-color: var(--brand-primary); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .sidebar-item:hover {
+            background-color: #f1f5f9;
+            color: var(--brand-primary);
+        }
+
+        .sidebar-item.active {
+            background-color: var(--brand-primary);
+            color: white;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+    <script>
+        // Theme management
+        const savedTheme = localStorage.getItem('clinic_theme') || 'ocean';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('clinic_theme', theme);
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex z-50 shadow-lg">
+        <div class="h-16 flex items-center px-6 border-b border-gray-100">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white mr-3 bg-primary">
+                <i class="fa-solid fa-user-doctor"></i>
+            </div>
+            <span class="text-xl font-bold text-gray-700">DigitalRX<span class="text-primary">.io</span></span>
+        </div>
+
+        <nav id="nav-menu" class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <!-- Navigation items will be injected here -->
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="openModal('help-modal')"
+                class="w-full flex items-center px-3 py-2.5 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 text-sm font-medium transition-colors">
+                <i class="fa-solid fa-circle-info w-6 text-center mr-2"></i>
+                Need Help?
+            </button>
+            <button onclick="logout()"
+                class="w-full mt-2 flex items-center px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">
+                <i class="fa-solid fa-right-from-bracket w-6 text-center mr-2"></i>
+                Logout (Demo)
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-10">
+            <div class="flex items-center">
+                <button id="mobile-menu-toggle"
+                    class="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 mr-2">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h1 id="page-title" class="text-xl font-semibold text-gray-800">Dashboard</h1>
+                    <p id="page-breadcrumb" class="text-xs text-gray-500 hidden sm:block">DigitalRX.io - Dashboard</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Notifications -->
+                <div class="relative group" id="notification-center">
+                    <button onclick="toggleNotifications()"
+                        class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:bg-white hover:text-primary transition-all relative">
+                        <i class="fa-regular fa-bell"></i>
+                        <span id="notif-badge"
+                            class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    <div id="notif-dropdown"
+                        class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 hidden z-50 overflow-hidden">
+                        <div class="p-4 border-b border-gray-50 flex justify-between items-center">
+                            <h4 class="text-sm font-bold text-gray-800">Notifications</h4>
+                            <span class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Live</span>
+                        </div>
+                        <div id="notif-list" class="max-h-64 overflow-y-auto">
+                            <div class="p-8 text-center text-gray-400 text-xs text-gray-500">No new alerts</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme Switcher -->
+                <div class="flex bg-gray-100 p-1 rounded-xl">
+                    <button onclick="setTheme('ocean')" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-all text-blue-500" title="Ocean Theme">
+                        <i class="fa-solid fa-droplet"></i>
+                    </button>
+                    <button onclick="setTheme('midnight')" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-all text-purple-500" title="Midnight Theme">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button onclick="setTheme('mint')" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-all text-emerald-500" title="Mint Theme">
+                        <i class="fa-solid fa-leaf"></i>
+                    </button>
+                </div>
+
+                <button onclick="openModal('appointment-modal')"
+                    class="text-white text-sm font-medium py-2 px-4 rounded-md shadow flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 bg-primary">
+                    <i class="fa-regular fa-calendar-plus"></i>
+                    <span class="hidden sm:inline">Book Appointment</span>
+                </button>
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <img src="https://flagcdn.com/w20/us.png" alt="US" class="h-4 w-auto">
+                    <span class="hidden md:inline">English</span>
+                </div>
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-gray-50">
+            <!-- Content will be injected here by JS -->
+        </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modal-container" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4">
+        <!-- Help Modal -->
+        <div id="help-modal" class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden hidden p-8">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Need Assistance?</h3>
+            <div class="space-y-4">
+                <a href="mailto:support@digitalrx.io" class="flex items-center gap-4 p-4 border rounded-xl hover:bg-blue-50 group transition-all">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <i class="fa-solid fa-envelope text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-800">Email Support</h4>
+                        <p class="text-sm text-gray-500">Response within 24h</p>
+                    </div>
+                </a>
+            </div>
+            <button onclick="closeModal()" class="w-full mt-6 py-2 text-gray-400 hover:text-gray-600 underline">Close</button>
+        </div>
+
+        <!-- Appointment Modal -->
+        <div id="appointment-modal" class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden hidden transform transition-all p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-gray-800 tracking-tight">Book Appointment</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="appointment-form" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Patient Name</label>
+                        <input type="text" name="patient_name" required class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm" placeholder="Enter full name">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Doctor</label>
+                        <select name="doctor_id" required class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm appearance-none cursor-pointer">
+                            <option value="1">Dr. Paul Malone</option>
+                            <option value="2">Dr. Sarah Johnson</option>
+                            <option value="3">Dr. Michael Chen</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Treatment</label>
+                        <select name="treatment_id" class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm appearance-none cursor-pointer">
+                            <option value="">-- Select Treatment --</option>
+                            <option value="1">Cardiac Surgery</option>
+                            <option value="2">Dental Cleaning</option>
+                            <option value="3">Physical Therapy</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Date & Time</label>
+                        <input type="datetime-local" name="appointment_date" required class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm">
+                    </div>
+                </div>
+                <button type="button" onclick="handleBooking()" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all">
+                    Finalize Booking
+                </button>
+            </form>
+        </div>
+
+        <!-- Register Patient Modal -->
+        <div id="register-patient-modal" class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden hidden transform transition-all p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-gray-800 tracking-tight">Register Patient</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="register-patient-form" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                        <input type="text" name="name" required class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm" placeholder="Enter full name">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Age</label>
+                        <input type="number" name="age" required class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Gender</label>
+                        <select name="gender" class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm appearance-none cursor-pointer">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Blood Type</label>
+                        <input type="text" name="blood" placeholder="e.g. O+" class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm">
+                    </div>
+                </div>
+                <button type="button" onclick="handleRegisterPatient()" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all">
+                    Register Patient
+                </button>
+            </form>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[200] space-y-3"></div>
+
+    <script>
+        // --- MOCK DATA ---
+        const MOCK_DATA = {
+            clinic: {
+                name: "Northstar Clinic",
+                admin: "Dr Paul Malone",
+                email: "northstar.digitalrx@gmail.com",
+                phone: "91 1958363346",
+                country: "Kenya",
+                timezone: "E. Africa Standard Time"
+            },
+            stats: [
+                { label: 'Doctors', value: 10, icon: 'fa-user-doctor' },
+                { label: 'Patients', value: 171, icon: 'fa-hospital-user' },
+                { label: 'Appointments', value: 750, icon: 'fa-regular fa-calendar-check' },
+                { label: 'Available Beds', value: 24, icon: 'fa-solid fa-bed' }
+            ],
+            navItems: [
+                { label: 'Dashboard', icon: 'fa-chart-pie', id: 'dashboard' },
+                { label: 'My Account', icon: 'fa-user', id: 'account' },
+                { label: 'Appointments', icon: 'fa-regular fa-calendar-check', id: 'appointments' },
+                { label: 'Patients', icon: 'fa-solid fa-bed-pulse', id: 'patients' },
+                { label: 'Doctors', icon: 'fa-solid fa-stethoscope', id: 'doctors' },
+                { label: 'Pharmacy', icon: 'fa-solid fa-pills', id: 'pharmacy' },
+                { label: 'Specialty', icon: 'fa-solid fa-star', id: 'specialty' },
+                { label: 'Treatments', icon: 'fa-solid fa-file-waveform', id: 'treatment' },
+                { label: 'Enquiries', icon: 'fa-solid fa-headset', id: 'enquiries' },
+                { label: 'Email Templates', icon: 'fa-solid fa-envelope-open-text', id: 'emailTemplates' },
+                { label: 'SEO Settings', icon: 'fa-solid fa-magnifying-glass-chart', id: 'seo' }
+            ],
+            recentActivities: [
+                { type: 'patient', title: 'New patient registered', meta: 'Sarah Johnson • 2 mins ago', icon: 'fa-user-plus', bg: 'bg-blue-100', text: 'text-blue-600' },
+                { type: 'appointment', title: 'Appointment confirmed', meta: 'Dr. Malone • 15 mins ago', icon: 'fa-check', bg: 'bg-green-100', text: 'text-green-600' },
+                { type: 'report', title: 'Report updated', meta: 'Lab results • 1 hour ago', icon: 'fa-file-medical', bg: 'bg-purple-100', text: 'text-purple-600' }
+            ],
+            patients: [
+                { id: 1, name: 'Sarah Johnson', age: 28, gender: 'Female', blood: 'O+', status: 'Active', initials: 'SJ' },
+                { id: 2, name: 'Michael Chen', age: 35, gender: 'Male', blood: 'A-', status: 'Active', initials: 'MC' },
+                { id: 3, name: 'Emma Wilson', age: 42, gender: 'Female', blood: 'B+', status: 'Active', initials: 'EW' }
+            ],
+            appointments: [
+                { id: 1, patient: 'Sarah Johnson', doctor: 'Dr. Paul Malone', date: 'Mar 26, 2026', time: '10:00 AM', service: 'General Consult', status: 'confirmed' },
+                { id: 2, patient: 'Michael Chen', doctor: 'Dr. Sarah Johnson', date: 'Mar 26, 2026', time: '11:30 AM', service: 'Dental Checkup', status: 'pending' },
+                { id: 3, patient: 'Emma Wilson', doctor: 'Dr. Paul Malone', date: 'Mar 25, 2026', time: '02:00 PM', service: 'Follow-up', status: 'completed' }
+            ],
+            doctors: [
+                { id: 1, name: 'Dr. Paul Malone', specialty: 'Cardiology', email: 'paul.malone@clinic.io', fees: 50, avatar: 'https://i.pravatar.cc/150?u=1' },
+                { id: 2, name: 'Dr. Sarah Johnson', specialty: 'Pediatrics', email: 'sarah.j@clinic.io', fees: 40, avatar: 'https://i.pravatar.cc/150?u=2' },
+                { id: 3, name: 'Dr. Michael Chen', specialty: 'Dermatology', email: 'm.chen@clinic.io', fees: 45, avatar: 'https://i.pravatar.cc/150?u=3' }
+            ],
+            pharmacy: [
+                { id: 1, name: 'Amoxicillin 500mg', category: 'Medicine', stock: 45, price: 12.50, expiry: 'Dec 2026' },
+                { id: 2, name: 'Paracetamol 500mg', category: 'Medicine', stock: 150, price: 5.00, expiry: 'Oct 2027' },
+                { id: 3, name: 'Surgical Masks (50pk)', category: 'Equipment', stock: 12, price: 15.00, expiry: 'N/A' }
+            ],
+            specialties: [
+                { id: 1, name: 'Cardiology', icon: 'fa-heart-pulse', staff: 4, head: 'Dr. Paul Malone', color: 'red' },
+                { id: 2, name: 'Pediatrics', icon: 'fa-baby', staff: 3, head: 'Dr. Sarah Johnson', color: 'indigo' },
+                { id: 3, name: 'Dermatology', icon: 'fa-hand-dots', staff: 2, head: 'Dr. Michael Chen', color: 'blue' },
+                { id: 4, name: 'Orthopedics', icon: 'fa-bone', staff: 1, head: 'Unassigned', color: 'emerald' }
+            ],
+            treatments: [
+                { name: 'Cardiac Surgery', desc: 'Standard bypass surgery procedure.', cost: 15000, duration: '4-6 Hours', icon: 'fa-heart-pulse', bg: 'blue' },
+                { name: 'Dental Cleaning', desc: 'Professional scaling and polishing.', cost: 150, duration: '45 Mins', icon: 'fa-tooth', bg: 'teal' },
+                { name: 'Physical Therapy', desc: 'Rehabilitation session.', cost: 80, duration: '60 Mins', icon: 'fa-person-walking', bg: 'purple' }
+            ],
+            enquiries: [
+                { name: 'Alice Parker', subject: 'Billing Clarification', source: 'Website', status: 'New', color: 'blue', date: '2 mins ago' },
+                { name: 'John Doe', subject: 'Appointment Scheduling', source: 'Mobile', status: 'Urgent', color: 'rose', date: '1 hour ago' }
+            ],
+            emailTemplates: [
+                { name: 'Appointment Confirmation', subject: 'Your appointment is confirmed!', type: 'Transactional', date: 'Mar 15, 2026' },
+                { name: 'Monthly Newsletter', subject: 'Healthy Living Tips', type: 'General', date: 'Mar 10, 2026' }
+            ],
+            seoData: {
+                score: 85,
+                pages: [
+                    { name: 'Home', title: 'Northstar Clinic - Best Healthcare', status: 'Indexed', color: 'green' },
+                    { name: 'Services', title: 'Our Medical Services', status: 'Indexed', color: 'green' },
+                    { name: 'Contact', title: 'Contact Us Today', status: 'No-Index', color: 'amber' }
+                ]
+            }
+        };
+
+        // --- SPA ENGINE ---
+        let currentView = 'dashboard';
+
+        function renderNav() {
+            const nav = document.getElementById('nav-menu');
+            nav.innerHTML = MOCK_DATA.navItems.map(item => `
+                <a href="javascript:void(0)" onclick="switchView('${item.id}')"
+                    class="sidebar-item ${currentView === item.id ? 'active' : 'text-gray-600'} flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group">
+                    <i class="fa-solid ${item.icon} w-6 text-center mr-2"></i>
+                    ${item.label}
+                </a>
+            `).join('');
+        }
+
+        function switchView(viewId) {
+            currentView = viewId;
+            renderNav();
+            const title = MOCK_DATA.navItems.find(i => i.id === viewId)?.label || 'Dashboard';
+            const breadcrumb = document.getElementById('page-breadcrumb');
+            if (breadcrumb) {
+                document.getElementById('page-title').innerText = title;
+                breadcrumb.innerText = `DigitalRX.io - ${title}`;
+            }
+            
+            const main = document.getElementById('main-content');
+            main.innerHTML = `<div class="fade-in">${VIEWS[viewId] ? VIEWS[viewId]() : `<div class="p-12 text-center text-gray-400">View ${viewId} is coming soon!</div>`}</div>`;
+            
+            if (viewId === 'dashboard') initDashboardChart();
+        }
+
+        // --- VIEWS ---
+        const VIEWS = {
+            dashboard: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+                                <div class="flex items-center gap-5">
+                                    <div class="relative">
+                                        <div class="w-20 h-20 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
+                                            <i class="fa-solid fa-heart-pulse text-blue-600 text-4xl"></i>
+                                        </div>
+                                        <div class="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-md shadow-sm">Admin</div>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-2xl font-bold text-gray-800">${MOCK_DATA.clinic.name}</h2>
+                                        <div class="flex items-center text-gray-500 text-sm mt-1">
+                                            <i class="fa-solid fa-shield-halved text-gray-400 mr-1.5 text-xs"></i>Admin Profile
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-8 sm:gap-12 border-l-0 lg:border-l border-gray-100 pl-0 lg:pl-6 w-full lg:w-auto justify-between sm:justify-start">
+                                    ${MOCK_DATA.stats.map(stat => `
+                                        <div class="text-center lg:text-left">
+                                            <div class="flex items-center justify-center lg:justify-start gap-2 mb-1">
+                                                <i class="fa-solid ${stat.icon} text-gray-400 text-sm"></i>
+                                                <span class="text-xl font-bold text-gray-800">${stat.value}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-500">${stat.label}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="hidden xl:block">
+                                    <div class="w-32 h-32 bg-blue-900 rounded-lg flex flex-col items-center justify-center text-white shadow-lg relative overflow-hidden group cursor-pointer hover:scale-105 transition-transform duration-300">
+                                        <span class="text-[10px] uppercase tracking-widest mb-2 opacity-70">Active Plan</span>
+                                        <i class="fa-solid fa-bolt text-yellow-400 text-2xl mb-1 group-hover:animate-pulse"></i>
+                                        <span class="font-bold text-lg tracking-wide">PREMIUM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 class="text-lg font-bold text-gray-800 mb-6">Clinic Overview</h3>
+                                <div class="relative h-64 w-full"><canvas id="appointmentsChart"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                                <h4 class="font-bold text-gray-800 mb-4 text-sm">Recent Activity</h4>
+                                <div class="space-y-4">
+                                    ${MOCK_DATA.recentActivities.map(activity => `
+                                        <div class="flex gap-3 items-start">
+                                            <div class="w-8 h-8 rounded-full ${activity.bg} flex items-center justify-center ${activity.text} flex-shrink-0 mt-0.5">
+                                                <i class="fa-solid ${activity.icon} text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm text-gray-800 font-medium">${activity.title}</p>
+                                                <p class="text-xs text-gray-500">${activity.meta}</p>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            account: () => `
+                <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-6">Account Settings</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Clinic Name</label>
+                            <p class="text-lg font-medium text-gray-800 border-b pb-2">${MOCK_DATA.clinic.name}</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Admin Name</label>
+                            <p class="text-lg font-medium text-gray-800 border-b pb-2">${MOCK_DATA.clinic.admin}</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Email Address</label>
+                            <p class="text-lg font-medium text-gray-800 border-b pb-2">${MOCK_DATA.clinic.email}</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Phone Number</label>
+                            <p class="text-lg font-medium text-gray-800 border-b pb-2">${MOCK_DATA.clinic.phone}</p>
+                        </div>
+                    </div>
+                </div>
+            `,
+            patients: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Patient Registry</h2>
+                        <button onclick="openModal('register-patient-modal')" class="bg-primary text-white font-bold py-2 px-6 rounded-xl shadow-lg">Register Patient</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${MOCK_DATA.patients.map(p => `
+                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
+                                <div class="flex justify-between items-start mb-6">
+                                    <div class="w-16 h-16 ${p.gender === 'Female' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center font-bold text-xl">${p.initials}</div>
+                                    <button class="text-gray-200 group-hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">${p.name}</h3>
+                                <p class="text-sm font-medium text-primary">P-${String(p.id).padStart(4, '0')}</p>
+                                <div class="grid grid-cols-2 gap-4 border-t border-gray-50 mt-6 pt-6">
+                                    <div><p class="text-[10px] font-bold text-gray-400 uppercase">Age / Sex</p><p class="text-sm font-bold text-gray-700">${p.age}y, ${p.gender}</p></div>
+                                    <div><p class="text-[10px] font-bold text-gray-400 uppercase">Blood Type</p><p class="text-sm font-bold text-gray-700">${p.blood}</p></div>
+                                </div>
+                                <button onclick="showToast('Patient profile is coming soon!')" class="w-full mt-6 py-3 bg-gray-50 group-hover:bg-primary group-hover:text-white rounded-xl text-sm font-bold text-gray-600 transition-all">View Profile</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            appointments: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Appointments</h2>
+                        <button onclick="openModal('appointment-modal')" class="bg-primary text-white font-bold py-2 px-6 rounded-xl shadow-lg">New Appointment</button>
+                    </div>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase">
+                                <tr>
+                                    <th class="px-6 py-4">Patient</th>
+                                    <th class="px-6 py-4">Doctor</th>
+                                    <th class="px-6 py-4">Date & Time</th>
+                                    <th class="px-6 py-4">Service</th>
+                                    <th class="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                ${MOCK_DATA.appointments.map(a => `
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-4 font-bold text-gray-800">${a.patient}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">${a.doctor}</td>
+                                        <td class="px-6 py-4"><span class="block text-sm font-bold text-gray-800">${a.date}</span><span class="block text-xs text-gray-500">${a.time}</span></td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">${a.service}</td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-3 py-1 bg-${a.status === 'confirmed' ? 'blue' : (a.status === 'pending' ? 'orange' : 'green')}-50 text-${a.status === 'confirmed' ? 'blue' : (a.status === 'pending' ? 'orange' : 'green')}-600 rounded-full text-[10px] font-bold uppercase ring-1 ring-inset">
+                                                ${a.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+            doctors: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Medical Staff</h2>
+                        <button onclick="openModal('appointment-modal')" class="bg-primary text-white font-bold py-2 px-6 rounded-xl shadow-lg">New Appointment</button>
+                    </div>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase">
+                                <tr>
+                                    <th class="px-8 py-4">Doctor Profile</th>
+                                    <th class="px-6 py-4">Department</th>
+                                    <th class="px-6 py-4">Contact</th>
+                                    <th class="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                ${MOCK_DATA.doctors.map(d => `
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-8 py-5">
+                                            <div class="flex items-center gap-4">
+                                                <img src="${d.avatar}" class="w-10 h-10 rounded-xl object-cover shadow-sm">
+                                                <div><div class="font-bold text-gray-800">${d.name}</div><div class="text-[10px] text-gray-400">DR-${String(d.id).padStart(3, '0')}</div></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5"><span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold">${d.specialty}</span></td>
+                                        <td class="px-6 py-5">
+                                            <div class="text-sm font-medium text-gray-700">${d.email}</div>
+                                            <div class="text-xs text-gray-400">Fees: $${d.fees.toFixed(2)}</div>
+                                        </td>
+                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-green-500"></div><span class="text-sm font-bold text-green-600">Available</span></div></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+            pharmacy: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Pharmacy Inventory</h2>
+                        <button onclick="showToast('Add Item is demo-only')" class="bg-primary text-white font-bold py-2 px-6 rounded-xl shadow-lg">Add Item</button>
+                    </div>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase">
+                                <tr>
+                                    <th class="px-8 py-4">Item Details</th>
+                                    <th class="px-6 py-4">Category</th>
+                                    <th class="px-6 py-4">Stock</th>
+                                    <th class="px-6 py-4">Expiry</th>
+                                    <th class="px-6 py-4">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                ${MOCK_DATA.pharmacy.map(i => `
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-8 py-5"><div class="font-bold text-gray-800">${i.name}</div><div class="text-[10px] text-gray-400 uppercase">ITEM-${String(i.id).padStart(4, '0')}</div></td>
+                                        <td class="px-6 py-5"><span class="bg-gray-50 text-gray-600 px-3 py-1 rounded-lg text-[10px] font-bold uppercase border">${i.category}</span></td>
+                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><span class="text-sm font-black text-gray-800">${i.stock}</span> <span class="px-2 py-0.5 bg-${i.stock < 20 ? 'orange' : 'green'}-50 text-${i.stock < 20 ? 'orange' : 'green'}-600 rounded text-[10px] uppercase font-bold">${i.stock < 20 ? 'Low' : 'OK'}</span></div></td>
+                                        <td class="px-6 py-5 text-xs font-bold text-gray-600">${i.expiry}</td>
+                                        <td class="px-6 py-5 font-bold text-gray-800">$${i.price.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+            specialty: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Specialty Departments</h2>
+                        <button onclick="showToast('Manage Units is demo-only')" class="bg-amber-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg">Manage Units</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        ${MOCK_DATA.specialties.map(s => `
+                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-2xl transition-all cursor-pointer group text-center">
+                                <div class="w-20 h-20 bg-${s.color}-50 rounded-full flex items-center justify-center text-${s.color}-600 text-3xl mx-auto mb-6 group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid ${s.icon}"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-gray-800 mb-1">${s.name}</h3>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-6">Department</p>
+                                <div class="grid grid-cols-2 gap-4 border-t border-gray-50 pt-6">
+                                    <div class="text-left"><p class="text-[10px] text-gray-400 font-bold uppercase">Head</p><p class="text-xs font-bold text-blue-600">${s.head}</p></div>
+                                    <div class="text-right"><p class="text-[10px] text-gray-400 font-bold uppercase">Staff</p><p class="text-xs font-bold text-amber-600">${s.staff} Members</p></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            treatment: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div><h2 class="text-2xl font-bold text-gray-800">Treatment Protocols</h2><p class="text-sm text-gray-500">Standardized procedures</p></div>
+                        <button onclick="showToast('Create Plan is demo-only')" class="bg-emerald-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg flex items-center gap-2 transition-all"><i class="fa-solid fa-file-waveform"></i> Create New Plan</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${MOCK_DATA.treatments.map(t => `
+                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-14 h-14 bg-${t.bg}-50 rounded-2xl flex items-center justify-center text-${t.bg}-600 text-2xl group-hover:bg-${t.bg}-600 group-hover:text-white transition-all"><i class="fa-solid ${t.icon}"></i></div>
+                                    <div><h3 class="text-lg font-black text-gray-800">${t.name}</h3><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${t.duration}</p></div>
+                                </div>
+                                <p class="text-sm text-gray-500 mb-6 italic">${t.desc}</p>
+                                <div class="flex items-center justify-between pt-6 border-t border-gray-50"><div class="text-[10px] font-bold text-gray-400 uppercase">Base Cost</div><div class="text-xl font-black text-gray-800">$${t.cost.toLocaleString()}</div></div>
+                                <button onclick="showToast('Assign feature is demo-only')" class="w-full mt-6 py-3 border border-gray-100 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-gray-800 uppercase tracking-widest transition-all">Assign to Patient</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            enquiries: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Support Enquiries</h2>
+                        <button onclick="showToast('Export Leads is demo-only')" class="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold shadow-sm hover:bg-gray-50 transition-all">Export Leads</button>
+                    </div>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50/50 text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                                <tr><th class="px-8 py-5">Patient Name</th><th class="px-6 py-5">Subject</th><th class="px-6 py-5">Source</th><th class="px-6 py-5">Status</th><th class="px-6 py-5">Date</th><th class="px-8 py-5"></th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                ${MOCK_DATA.enquiries.map(e => `
+                                    <tr class="hover:bg-slate-50/50 transition-all group">
+                                        <td class="px-8 py-6"><div class="flex items-center gap-4"><div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold shadow-inner">${e.name[0]}</div><h4 class="font-bold text-gray-800 text-sm">${e.name}</h4></div></td>
+                                        <td class="px-6 py-6 text-sm text-gray-600 font-medium">${e.subject}</td>
+                                        <td class="px-6 py-6 text-xs font-bold text-gray-400">${e.source}</td>
+                                        <td class="px-6 py-6"><div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-${e.color === 'rose' ? 'rose' : (e.color === 'emerald' ? 'green' : e.color)}-500"></div><span class="text-xs font-black text-${e.color === 'rose' ? 'rose' : (e.color === 'emerald' ? 'green' : e.color)}-600 uppercase tracking-wider">${e.status}</span></div></td>
+                                        <td class="px-6 py-6 text-xs text-gray-400 font-medium">${e.date}</td>
+                                        <td class="px-8 py-6 text-right"><button onclick="showToast('Reply feature is demo-only')" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm">Reply Now</button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+            emailTemplates: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Email Communication</h2>
+                        <button onclick="showToast('Design Template is demo-only')" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg flex items-center gap-2 transition-all active:scale-95"><i class="fa-solid fa-paintbrush"></i> Design Template</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        ${MOCK_DATA.emailTemplates.map((t, idx) => `
+                            <div class="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group relative">
+                                <div class="flex items-center justify-between mb-8"><div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 text-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"><i class="fa-solid fa-envelope"></i></div><span class="px-3 py-1 bg-gray-50 text-gray-400 group-hover:text-gray-800 rounded-lg text-[10px] font-black uppercase tracking-widest">${t.type}</span></div>
+                                <h3 class="text-xl font-black text-gray-800 mb-2">${t.name}</h3><p class="text-sm text-gray-500 mb-8 italic line-clamp-1">Subject: ${t.subject}</p>
+                                <div class="flex items-center justify-between border-t border-gray-50 pt-6"><div><p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Created</p><p class="text-xs font-black text-gray-700">${t.date}</p></div><div class="flex gap-2">
+                                    <button class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600 transition-all flex items-center justify-center"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-blue-600 transition-all flex items-center justify-center"><i class="fa-solid fa-eye"></i></button>
+                                </div></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            seo: () => `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Search Engine Optimization</h2>
+                        <button onclick="showToast('SEO Audit is demo-only')" class="bg-emerald-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg flex items-center gap-2 transition-all"><i class="fa-solid fa-shield-heart"></i> Run SEO Audit</button>
+                    </div>
+                    <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                        <div class="relative w-32 h-32 flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90"><circle cx="64" cy="64" r="56" stroke="#f1f5f9" stroke-width="8" fill="transparent"></circle><circle cx="64" cy="64" r="56" stroke="#10b981" stroke-width="8" fill="transparent" stroke-dasharray="351.85" stroke-dashoffset="${351.85 * (1 - MOCK_DATA.seoData.score / 100)}"></circle></svg>
+                            <div class="absolute flex flex-col items-center"><span class="text-3xl font-black text-gray-800">${MOCK_DATA.seoData.score}</span><span class="text-[10px] font-bold text-gray-400 uppercase">Score</span></div>
+                        </div>
+                        <div class="flex-1 space-y-2"><h3 class="text-xl font-black text-gray-800">Your Clinic Visibility is Strong!</h3><p class="text-sm text-gray-500">Your portal is well-optimized for local search results.</p></div>
+                    </div>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50/50 text-gray-500 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                                <tr><th class="px-8 py-5">Page Name</th><th class="px-6 py-5">Meta Title</th><th class="px-6 py-5">Index Status</th><th class="px-8 py-5"></th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                ${MOCK_DATA.seoData.pages.map(p => `
+                                    <tr class="hover:bg-slate-50/50 transition-all group">
+                                        <td class="px-8 py-6 font-black text-gray-800 text-sm">${p.name}</td>
+                                        <td class="px-6 py-6 text-sm text-gray-500">${p.title}</td>
+                                        <td class="px-6 py-6"><span class="px-3 py-1 bg-${p.color}-50 text-${p.color}-600 rounded-full text-[10px] font-bold uppercase ring-1 ring-inset">${p.status}</span></td>
+                                        <td class="px-8 py-6 text-right"><button class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-blue-600 transition-all flex items-center justify-center"><i class="fa-solid fa-gear"></i></button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+        };
+
+        // --- CHART JS ---
+        function initDashboardChart() {
+            setTimeout(() => {
+                const canvas = document.getElementById('appointmentsChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                let gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+                gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Appointments',
+                            data: [12, 19, 15, 25, 22, 10, 8],
+                            borderColor: '#3b82f6',
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#3b82f6',
+                            pointRadius: 4,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { borderDash: [2, 4], color: '#f1f5f9' }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } }
+                        }
+                    }
+                });
+            }, 100);
+        }
+
+        // --- UTILS ---
+        function toggleNotifications() {
+            document.getElementById('notif-dropdown').classList.toggle('hidden');
+        }
+
+        function openModal(id) {
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-container').classList.add('hidden');
+            document.querySelectorAll('#modal-container > div').forEach(m => m.classList.add('hidden'));
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = `bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in`;
+            toast.innerHTML = `<i class="fa-solid fa-check-circle"></i> <span class="text-sm font-bold">${message}</span>`;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function logout() {
+            alert('Logout is a demo feature in this static clone.');
+        }
+
+        function handleBooking() {
+            const form = document.getElementById('appointment-form');
+            const formData = new FormData(form);
+            const patientName = formData.get('patient_name');
+            const doctorId = formData.get('doctor_id');
+            const treatmentId = formData.get('treatment_id');
+            const appointmentDate = formData.get('appointment_date');
+
+            if (!patientName || !doctorId || !appointmentDate) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            const doctor = MOCK_DATA.doctors.find(d => d.id == doctorId);
+            const treatment = MOCK_DATA.treatments[parseInt(treatmentId) - 1] || { name: 'General Consultation' };
+            const dateObj = new Date(appointmentDate);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const formattedTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            const newAppointment = {
+                id: MOCK_DATA.appointments.length + 1,
+                patient: patientName,
+                doctor: doctor ? doctor.name : 'Unknown',
+                date: formattedDate,
+                time: formattedTime,
+                service: treatment.name,
+                status: 'confirmed'
+            };
+
+            // Add to mock data
+            MOCK_DATA.appointments.unshift(newAppointment);
+            
+            // Add to recent activities
+            MOCK_DATA.recentActivities.unshift({
+                type: 'appointment',
+                title: 'New appointment booked',
+                meta: `${patientName} • Just now`,
+                icon: 'fa-check',
+                bg: 'bg-green-100',
+                text: 'text-green-600'
+            });
+
+            // Update stats
+            const apptStat = MOCK_DATA.stats.find(s => s.label === 'Appointments');
+            if (apptStat) apptStat.value++;
+
+            // Clean up
+            closeModal();
+            form.reset();
+            showToast(`Appointment Booked for ${patientName}`);
+            
+            // Refresh view
+            switchView(currentView);
+        }
+
+        function handleRegisterPatient() {
+            const form = document.getElementById('register-patient-form');
+            const formData = new FormData(form);
+            const name = formData.get('name');
+            const age = formData.get('age');
+            const gender = formData.get('gender');
+            const blood = formData.get('blood');
+
+            if (!name || !age) {
+                alert('Please fill in name and age.');
+                return;
+            }
+
+            const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+            const newPatient = {
+                id: MOCK_DATA.patients.length + 1,
+                name: name,
+                age: parseInt(age),
+                gender: gender,
+                blood: blood || 'N/A',
+                status: 'Active',
+                initials: initials
+            };
+
+            // Add to mock data
+            MOCK_DATA.patients.unshift(newPatient);
+
+            // Add to recent activities
+            MOCK_DATA.recentActivities.unshift({
+                type: 'patient',
+                title: 'New patient registered',
+                meta: `${name} • Just now`,
+                icon: 'fa-user-plus',
+                bg: 'bg-blue-100',
+                text: 'text-blue-600'
+            });
+
+            // Update stats
+            const patientStat = MOCK_DATA.stats.find(s => s.label === 'Patients');
+            if (patientStat) patientStat.value++;
+
+            // Clean up
+            closeModal();
+            form.reset();
+            showToast(`Patient ${name} Registered`);
+
+            // Refresh view
+            switchView(currentView);
+        }
+
+        // Mobile menu toggle logic
+        document.getElementById('mobile-menu-toggle')?.addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('fixed');
+            sidebar.classList.toggle('inset-0');
+            sidebar.classList.toggle('w-full');
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            switchView('dashboard');
+        });
+    </script>
+</body>
+</html>
